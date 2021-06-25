@@ -1,5 +1,5 @@
 # skiplist
-Simple implementation of skiplist algorithm
+Simple implementation of skiplist data structure
 
 # Usage:
 ```go
