@@ -1,8 +1,11 @@
 package skiplist
 
 import (
+	"errors"
+	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 )
 
 type SkipList struct {
@@ -14,15 +17,17 @@ type SkipList struct {
 }
 
 type SkipListNode struct {
-	key     string
-	value   []byte
-	deleted bool
-	next    []*SkipListNode
+	key       string
+	value     []byte
+	timestamp int64
+	tombstone bool
+	next      []*SkipListNode
 }
 
-type Value struct {
-	value   []byte
-	deleted bool
+type Entry struct {
+	value     []byte
+	timestamp int64
+	tombstone bool
 }
 
 func (s *SkipListNode) Key() string {
@@ -31,6 +36,14 @@ func (s *SkipListNode) Key() string {
 
 func (s *SkipListNode) Value() []byte {
 	return s.value
+}
+
+func (s *SkipListNode) Timestamp() int64 {
+	return s.timestamp
+}
+
+func (s *SkipListNode) Tombstone() bool {
+	return s.tombstone
 }
 
 func New(maxHeight int, seed int64) *SkipList {
@@ -71,9 +84,11 @@ func (s *SkipList) Add(key string, value []byte) string {
 
 	level := s.roll()
 	newNode := &SkipListNode{
-		key:   key,
-		value: value,
-		next:  make([]*SkipListNode, level+1), // if level is 0 than we need one more for pointers
+		key:       key,
+		value:     value,
+		timestamp: time.Now().Unix(),
+		tombstone: false,
+		next:      make([]*SkipListNode, level+1), // if level is 0 than we need one more for pointers
 	}
 
 	curr := s.head
@@ -127,12 +142,34 @@ func (s *SkipList) Contains(key string) bool {
 	return true
 }
 
-func (s *SkipList) Get(key string) []byte {
+func (s *SkipList) Get(key string) ([]byte, error) {
+	rez := s.search(key)
+	if rez != nil && !rez.tombstone {
+		return rez.value, nil
+	}
+	return nil, errors.New("Not existing key")
+}
+
+func (s *SkipList) TombstoneIt(key string) bool {
 	rez := s.search(key)
 	if rez != nil {
-		return rez.value
+		rez.value = nil
+		rez.timestamp = time.Now().Unix()
+		rez.tombstone = true
+		s.size--
+		return true
 	}
-	return nil
+	return false
+}
+
+func (s *SkipList) Update(key string, value []byte) bool {
+	rez := s.search(key)
+	if rez != nil {
+		rez.value = value
+		rez.timestamp = time.Now().Unix()
+		return true
+	}
+	return false
 }
 
 func (s *SkipList) Remove(key string) bool {
@@ -140,50 +177,36 @@ func (s *SkipList) Remove(key string) bool {
 	defer s.mutex.Unlock()
 
 	curr := s.head
-	founded := false
 	for i := s.height; i >= 0; i-- {
 		for ; curr.next[i] != nil; curr = curr.next[i] {
 			if curr.next[i].key > key {
 				break
 			} else if curr.next[i].key == key {
 				curr.next[i] = curr.next[i].next[i]
-				founded = true
+				s.size--
+				return true
 			}
 		}
 	}
-	return founded
+	return false
 }
 
 func (s *SkipList) Size() int {
 	return s.size
 }
 
-func (s *SkipList) ToMap(list []*SkipListNode, seen map[string][]*SkipListNode) {
+func (s *SkipList) ToMap(list []*SkipListNode, seen map[string]Entry) {
 	for _, n := range list {
 		if n == nil {
 			continue
 		} else {
 			if _, ok := seen[n.key]; !ok {
-				seen[n.key] = n.next
-				s.ToMap(n.next, seen)
-			} else {
-				continue
-			}
-		}
-	}
-}
-
-func (s *SkipList) Prep(list []*SkipListNode, seen map[string]Value) {
-	for _, n := range list {
-		if n == nil {
-			continue
-		} else {
-			if _, ok := seen[n.key]; !ok {
-				seen[n.key] = Value{
-					n.value,
-					n.deleted,
+				seen[n.key] = Entry{
+					value:     n.value,
+					timestamp: n.timestamp,
+					tombstone: n.tombstone,
 				}
-				s.Prep(n.next, seen)
+				s.ToMap(n.next, seen)
 			} else {
 				continue
 			}
