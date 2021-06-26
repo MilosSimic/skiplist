@@ -2,7 +2,6 @@ package skiplist
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
