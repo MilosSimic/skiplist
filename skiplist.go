@@ -1,4 +1,4 @@
-package skiplist
+package main
 
 import (
 	"errors"
@@ -221,7 +221,13 @@ func (s *SkipList) Size() int {
 	return s.size
 }
 
-func (s *SkipList) ToMap(list []*SkipListNode, seen map[string]Entry) {
+func (s *SkipList) ToMap() map[string]Entry {
+	seen := map[string]Entry{}
+	s.toMap(s.head.next, seen)
+	return seen
+}
+
+func (s *SkipList) toMap(list []*SkipListNode, seen map[string]Entry) {
 	for _, n := range list {
 		if n == nil {
 			continue
@@ -233,7 +239,7 @@ func (s *SkipList) ToMap(list []*SkipListNode, seen map[string]Entry) {
 					Timestamp: n.timestamp,
 					Tombstone: n.tombstone,
 				}
-				s.ToMap(n.next, seen)
+				s.toMap(n.next, seen)
 			} else {
 				continue
 			}
