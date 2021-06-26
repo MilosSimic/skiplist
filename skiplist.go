@@ -24,10 +24,10 @@ type SkipListNode struct {
 }
 
 type Entry struct {
-	key       string
-	value     []byte
-	timestamp int64
-	tombstone bool
+	Key       string
+	Value     []byte
+	Timestamp int64
+	Tombstone bool
 }
 
 func (s *SkipListNode) Key() string {
@@ -116,10 +116,10 @@ func (s *SkipList) Add(key string, value []byte) Entry {
 		}
 	}
 	return Entry{
-		key:       key,
-		value:     value,
-		tombstone: false,
-		timestamp: newNode.timestamp,
+		Key:       key,
+		Value:     value,
+		Tombstone: false,
+		Timestamp: newNode.timestamp,
 	}
 }
 
@@ -151,10 +151,10 @@ func (s *SkipList) Get(key string) (Entry, error) {
 	rez := s.search(key)
 	if rez != nil && !rez.tombstone {
 		return Entry{
-			key:       rez.key,
-			value:     rez.value,
-			tombstone: rez.tombstone,
-			timestamp: rez.timestamp,
+			Key:       rez.key,
+			Value:     rez.value,
+			Tombstone: rez.tombstone,
+			Timestamp: rez.timestamp,
 		}, nil
 	}
 	return Entry{}, errors.New("Not existing key")
@@ -168,10 +168,10 @@ func (s *SkipList) TombstoneIt(key string) (Entry, error) {
 		rez.tombstone = true
 		s.size--
 		return Entry{
-			key:       rez.key,
-			value:     nil,
-			tombstone: true,
-			timestamp: rez.timestamp,
+			Key:       rez.key,
+			Value:     nil,
+			Tombstone: true,
+			Timestamp: rez.timestamp,
 		}, nil
 	}
 	return Entry{}, errors.New("Not existing key")
@@ -183,10 +183,10 @@ func (s *SkipList) Update(key string, value []byte) (Entry, error) {
 		rez.value = value
 		rez.timestamp = time.Now().Unix()
 		return Entry{
-			key:       rez.key,
-			value:     rez.value,
-			tombstone: false,
-			timestamp: rez.timestamp,
+			Key:       rez.key,
+			Value:     rez.value,
+			Tombstone: false,
+			Timestamp: rez.timestamp,
 		}, nil
 	}
 	return Entry{}, errors.New("Not existing key")
@@ -206,10 +206,10 @@ func (s *SkipList) Remove(key string) (Entry, error) {
 				curr.next[i] = curr.next[i].next[i]
 				s.size--
 				return Entry{
-					key:       del.key,
-					value:     del.value,
-					tombstone: del.tombstone,
-					timestamp: del.timestamp,
+					Key:       del.key,
+					Value:     del.value,
+					Tombstone: del.tombstone,
+					Timestamp: del.timestamp,
 				}, nil
 			}
 		}
@@ -228,10 +228,10 @@ func (s *SkipList) ToMap(list []*SkipListNode, seen map[string]Entry) {
 		} else {
 			if _, ok := seen[n.key]; !ok {
 				seen[n.key] = Entry{
-					key:       n.key,
-					value:     n.value,
-					timestamp: n.timestamp,
-					tombstone: n.tombstone,
+					Key:       n.key,
+					Value:     n.value,
+					Timestamp: n.timestamp,
+					Tombstone: n.tombstone,
 				}
 				s.ToMap(n.next, seen)
 			} else {
