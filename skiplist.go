@@ -1,4 +1,4 @@
-package skiplist
+package main
 
 import (
 	"errors"
@@ -24,6 +24,7 @@ type SkipListNode struct {
 }
 
 type Entry struct {
+	key       string
 	value     []byte
 	timestamp int64
 	tombstone bool
@@ -77,7 +78,7 @@ func (s *SkipList) roll() int {
 	return level
 }
 
-func (s *SkipList) Add(key string, value []byte) string {
+func (s *SkipList) Add(key string, value []byte) Entry {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -114,7 +115,12 @@ func (s *SkipList) Add(key string, value []byte) string {
 			s.size++
 		}
 	}
-	return key
+	return Entry{
+		key:       key,
+		value:     value,
+		tombstone: false,
+		timestamp: newNode.timestamp,
+	}
 }
 
 func (s *SkipList) search(key string) *SkipListNode {
@@ -141,37 +147,52 @@ func (s *SkipList) Contains(key string) bool {
 	return true
 }
 
-func (s *SkipList) Get(key string) ([]byte, error) {
+func (s *SkipList) Get(key string) (Entry, error) {
 	rez := s.search(key)
 	if rez != nil && !rez.tombstone {
-		return rez.value, nil
+		return Entry{
+			key:       rez.key,
+			value:     rez.value,
+			tombstone: rez.tombstone,
+			timestamp: rez.timestamp,
+		}, nil
 	}
-	return nil, errors.New("Not existing key")
+	return Entry{}, errors.New("Not existing key")
 }
 
-func (s *SkipList) TombstoneIt(key string) bool {
+func (s *SkipList) TombstoneIt(key string) (Entry, error) {
 	rez := s.search(key)
 	if rez != nil {
 		rez.value = nil
 		rez.timestamp = time.Now().Unix()
 		rez.tombstone = true
 		s.size--
-		return true
+		return Entry{
+			key:       rez.key,
+			value:     nil,
+			tombstone: true,
+			timestamp: rez.timestamp,
+		}, nil
 	}
-	return false
+	return Entry{}, errors.New("Not existing key")
 }
 
-func (s *SkipList) Update(key string, value []byte) bool {
+func (s *SkipList) Update(key string, value []byte) (Entry, error) {
 	rez := s.search(key)
 	if rez != nil {
 		rez.value = value
 		rez.timestamp = time.Now().Unix()
-		return true
+		return Entry{
+			key:       rez.key,
+			value:     rez.value,
+			tombstone: false,
+			timestamp: rez.timestamp,
+		}, nil
 	}
-	return false
+	return Entry{}, errors.New("Not existing key")
 }
 
-func (s *SkipList) Remove(key string) bool {
+func (s *SkipList) Remove(key string) (Entry, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -181,13 +202,19 @@ func (s *SkipList) Remove(key string) bool {
 			if curr.next[i].key > key {
 				break
 			} else if curr.next[i].key == key {
+				del := curr.next[i]
 				curr.next[i] = curr.next[i].next[i]
 				s.size--
-				return true
+				return Entry{
+					key:       del.key,
+					value:     del.value,
+					tombstone: del.tombstone,
+					timestamp: del.timestamp,
+				}, nil
 			}
 		}
 	}
-	return false
+	return Entry{}, errors.New("Not existing key")
 }
 
 func (s *SkipList) Size() int {
@@ -201,6 +228,7 @@ func (s *SkipList) ToMap(list []*SkipListNode, seen map[string]Entry) {
 		} else {
 			if _, ok := seen[n.key]; !ok {
 				seen[n.key] = Entry{
+					key:       n.key,
 					value:     n.value,
 					timestamp: n.timestamp,
 					tombstone: n.tombstone,
