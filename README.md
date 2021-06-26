@@ -7,10 +7,11 @@ package main
 
 import (
 	"fmt"
+	sk "github.com/MilosSimic/skiplist
 )
 
 func main() {
-	sl := skiplist.New(32, 8)
+	sl := sk.New(32, 8)
 	sl.Add("a", []byte("A"))
 	sl.Add("b", []byte("B"))
 	sl.Add("c", []byte("C"))
@@ -30,21 +31,23 @@ func main() {
 	sl.Add("q", []byte("Q"))
 	sl.Add("r", []byte("R"))
 	sl.Add("s", []byte("S"))
+	fmt.Println("SIZE", sl.Size())
 
-	fmt.Println(sl.Contains("l"))
-	fmt.Println(sl.Contains("z"))
-
-	fmt.Println(string(sl.Get("l")[:]))
-	fmt.Println(string(sl.Get("z"))[:])
-
-	fmt.Println(sl.Remove("l"))
-	fmt.Println(sl.Remove("z"))
+	fmt.Println(sl.Remove("a"))
+	fmt.Println(sl.TombstoneIt("k"))
+	fmt.Println(sl.Remove("s"))
+	fmt.Println("SIZE", sl.Size())
+	d, err := sl.Get("k")
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(d)
+	}
 
 	node := sl.head
-	prep := map[string]Value{}
-	sl.Prep(node.next, prep)
+	prep := map[string]Entry{}
+	sl.ToMap(node.next, prep)
 	fmt.Println(prep)
-
 }
 
 ```
